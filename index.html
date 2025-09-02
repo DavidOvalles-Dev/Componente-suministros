@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solicitud de Comida</title>
+  <style>
+    :root { font-family: system-ui, Arial, sans-serif; }
+    body { background:#f6f7fb; margin:0; min-height:100vh; display:grid; place-items:center; }
+    .card { background:#fff; width:min(720px, 92vw); padding:22px; border-radius:14px;
+            box-shadow:0 8px 30px rgba(0,0,0,.08); }
+    h1 { margin:0 0 12px; font-size:1.4rem; }
+    p.hint{ margin:0 0 18px; color:#666; font-size:.95rem;}
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .grid > .full { grid-column:1 / -1; }
+    label { font-weight:600; font-size:.92rem; display:block; margin-bottom:6px; }
+    input, select, button, textarea {
+      width:100%; padding:10px; border:1px solid #dcdde3; border-radius:8px; font-size:1rem; box-sizing:border-box;
+      background:#fff;
+    }
+    input:focus, select:focus, textarea:focus { outline:2px solid #4b8bff33; border-color:#4b8bff; }
+    button { background:#2970ff; color:white; border:none; cursor:pointer; font-weight:600; margin-top:6px; }
+    button:hover { filter:brightness(.95); }
+    .msg { margin-top:12px; padding:10px; border-radius:8px; display:none; }
+    .ok { background:#e8f7ec; color:#166534; display:block; }
+    .err { background:#fde8e8; color:#991b1b; display:block; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Solicitud de Comida</h1>
+    <p class="hint">Completa los datos y envía la solicitud.</p>
+
+    <form id="formSolicitud" autocomplete="off">
+      <div class="grid">
+        <div>
+          <label for="articulo">Artículo</label>
+          <input id="articulo" name="articulo" type="text" placeholder="Ej. Botellón de agua" required/>
+        </div>
+
+        <div>
+          <label for="cantidad">Cantidad</label>
+          <input id="cantidad" name="cantidad" type="number" min="1" step="1" placeholder="Ej. 4" required/>
+        </div>
+
+        <div>
+          <label for="solicitante">Solicitante</label>
+          <input id="solicitante" name="solicitante" type="text" placeholder="Ej. Fulano" required/>
+        </div>
+
+        <div>
+          <label for="encargado">Encargado</label>
+          <input id="encargado" name="encargado" type="text" placeholder="Ej. Mengano" required/>
+        </div>
+
+        <div class="full">
+          <label for="origen">Origen</label>
+          <input id="origen" name="origen" type="text" placeholder="Ej. Almacén central / Cocina / Proveedor" required/>
+        </div>
+
+        <div>
+          <label for="fechaRetiro">Fecha de retiro</label>
+          <input id="fechaRetiro" name="fechaRetiro" type="date" required/>
+        </div>
+
+        <div>
+          <label for="fechaEntrega">Fecha de entrega</label>
+          <input id="fechaEntrega" name="fechaEntrega" type="date" required/>
+        </div>
+
+        <div class="full">
+          <label for="estado">Estado</label>
+          <select id="estado" name="estado">
+            <option value="pendiente" selected>Pendiente</option>
+            <option value="retirado">Retirado</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit">Enviar solicitud</button>
+      <div id="msg" class="msg"></div>
+    </form>
+  </main>
+
+  <script>
+    const API_BASE = "http://localhost:3000/api"; // tu backend monta rutas bajo /api
+    const form = document.getElementById("formSolicitud");
+    const msg = document.getElementById("msg");
+
+    function showMsg(text, ok = true) {
+      msg.textContent = text;
+      msg.className = ok ? "msg ok" : "msg err";
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      // Validaciones básicas
+      const fechaRetiro = form.fechaRetiro.value;
+      const fechaEntrega = form.fechaEntrega.value;
+      if (fechaRetiro && fechaEntrega && new Date(fechaEntrega) < new Date(fechaRetiro)) {
+        return showMsg("La fecha de entrega no puede ser anterior a la fecha de retiro.", false);
+      }
+
+      const payload = {
+        articulo: form.articulo.value.trim(),
+        cantidad: Number(form.cantidad.value),
+        solicitante: form.solicitante.value.trim(),
+        encargado: form.encargado.value.trim(),
+        origen: form.origen.value.trim(),
+        fechaRetiro,
+        fechaEntrega,
+        estado: form.estado.value
+      };
+
+      try {
+        const resp = await fetch(`${API_BASE}/solicitudes`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json();
+        if (!resp.ok) {
+          const errText = data?.error || "No se pudo crear la solicitud.";
+          return showMsg(errText, false);
+        }
+
+        showMsg("Solicitud creada correctamente ✅");
+        form.reset();
+        // Mantener estado por defecto
+        form.estado.value = "pendiente";
+      } catch (err) {
+        showMsg("Error de conexión con el servidor.", false);
+      }
+    });
+  </script>
+</body>
+</html>
